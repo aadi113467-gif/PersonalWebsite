@@ -43,12 +43,12 @@ export default function Home() {
       <section className="work-section section-shell" id="projects">
         <div className="section-heading"><p className="eyebrow"><span>03</span> Projects</p><p className="section-note">Selected work.</p></div>
         <article className="project-feature">
-          <div className="project-visual" aria-label="Placeholder for Movies Store project screenshots">
+          <div className="project-visual" aria-label="Movies Store catalog screenshot">
             <div className="visual-topline"><span>MOVIES STORE</span><span>01 / 01</span></div>
-            <div className="visual-window"><div className="window-bar"><span /><span /><span /></div><div className="window-content"><div className="movie-mark">MS<span>.</span></div><div className="movie-copy">Your next<br /><b>favorite film.</b></div><div className="movie-poster"><i>POSTER<br />IMAGE<br />GOES HERE</i></div><div className="movie-nav">Browse <span>Search</span> <span>Cart (0)</span></div></div></div>
-            <p className="visual-caption">Project imagery will replace this frame</p>
+            <div className="visual-window project-screenshot-window"><div className="window-bar"><span /><span /><span /></div><Image className="project-screenshot" src="/moviestore homepage.png" alt="GT Movies Store homepage" width={1366} height={768} sizes="(max-width: 720px) 88vw, 46vw" /></div>
+            <p className="visual-caption">Movies Store / Homepage view</p>
           </div>
-          <div className="project-details"><p className="project-index">01 / Full-stack web application</p><h2>Movies<br /><span>Store</span></h2><p className="project-summary">A digital movie storefront where people can browse a catalog, share reviews, build a cart, place orders, and return to their purchase history.</p><div className="tag-list" aria-label="Technologies used"><span>Django</span><span>Python</span><span>SQLite</span><span>Bootstrap</span></div><div className="project-actions"><a className="button button-primary" href="/projects/movies-store">More information <span aria-hidden="true">-&gt;</span></a><a className="button button-secondary" href="https://github.com/aadi113467-gif/moviesstore" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a></div></div>
+          <div className="project-details"><p className="project-index">01 / Full-stack web application</p><h2>Movies<br /><span>Store</span></h2><p className="project-summary">A digital movie storefront where people can browse a catalog, share reviews, build a cart, place orders, and return to their purchase history.</p><div className="tag-list" aria-label="Technologies used"><span>Django</span><span>Python</span><span>SQLite</span><span>Bootstrap</span></div><div className="project-actions"><a className="button button-primary" href="/projects/movies-store">More information <span aria-hidden="true">-&gt;</span></a><a className="button button-secondary" href="https://aadishah.pythonanywhere.com/" target="_blank" rel="noreferrer">Live site <span aria-hidden="true">↗</span></a><a className="button button-secondary" href="https://github.com/aadi113467-gif/moviesstore" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a></div></div>
         </article>
       </section>
 

@@ -83,6 +83,9 @@ main .hero-aside::after {
   height: 380px;
 }
 
+.project-screenshot-window { background: var(--white); }
+.project-screenshot { display: block; height: calc(100% - 22px); object-fit: contain; object-position: center; width: 100%; }
+
 main .section-heading::before {
   display: none;
 }
