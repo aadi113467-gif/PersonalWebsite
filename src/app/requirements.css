@@ -1,0 +1,47 @@
+.case-hero-grid { align-items: start; display: grid; gap: 7vw; grid-template-columns: minmax(0, 1fr) minmax(300px, .85fr); margin-top: 45px; }
+.case-hero-grid .case-intro { margin-top: 0; }
+.case-hero-grid .case-meta { margin-top: 55px; }
+.case-hero-screenshot { background: var(--white); border: 8px solid var(--white); box-shadow: 9px 9px 0 var(--gold); margin: 0; transform: rotate(1.5deg); }
+.case-hero-screenshot img { display: block; height: auto; width: 100%; }
+.case-hero-screenshot figcaption { color: var(--muted); font-size: .6rem; font-weight: 700; letter-spacing: .1em; padding: 10px 2px 2px; text-transform: uppercase; }
+.project-video { border: 0; display: block; height: 100%; min-height: 420px; width: 100%; }
+
+.process-section {
+  display: grid;
+  gap: 12vw;
+  grid-template-columns: .5fr 1fr;
+  padding-bottom: 110px;
+}
+
+.process-content { max-width: 720px; }
+.process-content h2 { font-family: Georgia, serif; font-size: clamp(2.7rem, 5vw, 5rem); font-weight: 400; letter-spacing: -.08em; line-height: .9; margin: 0 0 30px; }
+.process-content p { color: var(--muted); font-size: .96rem; line-height: 1.7; margin: 0; max-width: 650px; }
+
+.requirements-section {
+  display: grid;
+  gap: 12vw;
+  grid-template-columns: .5fr 1fr;
+  padding-bottom: 130px;
+}
+
+.requirements-content { max-width: 720px; }
+.requirements-content h2 { font-family: Georgia, serif; font-size: clamp(2.7rem, 5vw, 5rem); font-weight: 400; letter-spacing: -.08em; line-height: .9; margin: 0 0 44px; }
+.user-story-list { list-style: none; margin: 0; padding: 0; }
+.user-story-list li { align-items: flex-start; display: grid; gap: 18px; grid-template-columns: 34px 1fr; padding: 17px 0; }
+.user-story-list li + li { border-top: 1px solid var(--line); }
+.user-story-list li > span { color: var(--red); font-size: .68rem; font-weight: 700; padding-top: 3px; }
+.user-story-list p { color: var(--muted); font-size: .88rem; line-height: 1.55; margin: 0; }
+
+@media (max-width: 720px) {
+  .case-hero-grid { display: block; margin-top: 35px; }
+  .case-hero-grid .case-meta { margin-top: 40px; }
+  .case-hero-screenshot { margin-top: 45px; transform: none; }
+  .process-section { display: block; padding-bottom: 85px; }
+  .process-section .case-label { margin-bottom: 50px; }
+  .process-content h2 { font-size: 3rem; }
+  .requirements-section { display: block; padding-bottom: 85px; }
+  .requirements-section .case-label { margin-bottom: 50px; }
+  .requirements-content h2 { font-size: 3rem; }
+  .user-story-list li { gap: 12px; grid-template-columns: 27px 1fr; }
+  .user-story-list p { font-size: .8rem; }
+}
