@@ -1,5 +1,6 @@
 import TransitRail from "./components/transit-rail";
 import Reveal from "./components/reveal";
+import ScrollScenes from "./components/scroll-scenes";
 import { GithubIcon, LinkedinIcon, MailIcon, PhoneIcon, CodeIcon, LayersIcon, DatabaseIcon, WrenchIcon } from "./components/icons";
 import Image from "next/image";
 
@@ -8,6 +9,7 @@ export default function Home() {
     <main>
       <TransitRail />
       <Reveal />
+      <ScrollScenes />
       <header className="site-header">
         <a className="wordmark" href="#top" aria-label="Back to top">AS<span>.</span></a>
         <nav className="site-nav" aria-label="Primary navigation">
@@ -18,6 +20,7 @@ export default function Home() {
         </nav>
       </header>
 
+      <div className="scene-wrapper scene-hero" data-scene data-arrive-end="0" data-depart-start="0.35">
       <section className="hero section-shell is-current-stop" id="top">
         <div className="hero-ambient" aria-hidden="true"><span className="hero-grid" /></div>
         <div className="hero-kicker"><span>01</span> Georgia Tech / Computer Science</div>
@@ -36,6 +39,7 @@ export default function Home() {
         </div>
         <div className="hero-footer"><span>Scroll to explore</span><span className="hero-line" /><span>Atlanta, Georgia</span></div>
       </section>
+      </div>
 
       <section className="split-section section-shell" id="about">
         <div className="section-heading"><p className="eyebrow"><span>02</span> About</p></div>
@@ -62,9 +66,10 @@ export default function Home() {
         </div>
       </section>
 
+      <div className="scene-wrapper scene-projects" data-scene data-arrive-end="0.3" data-depart-start="0.6">
       <section className="work-section section-shell" id="projects">
         <div className="section-heading"><p className="eyebrow"><span>03</span> Projects</p><p className="section-note">Selected work.</p></div>
-        <article className="project-feature" data-reveal>
+        <article className="project-feature">
           <div className="project-visual" aria-label="Movies Store catalog screenshot">
             <div className="visual-topline"><span>MOVIES STORE</span><span>01 / 01</span></div>
             <div className="visual-window project-screenshot-window"><div className="window-bar"><span /><span /><span /></div><Image className="project-screenshot" src="/moviestore homepage.png" alt="GT Movies Store homepage" width={1366} height={768} sizes="(max-width: 720px) 88vw, 46vw" /></div>
@@ -73,17 +78,20 @@ export default function Home() {
           <div className="project-details"><p className="project-index">01 / Full-stack web application</p><h2>Movies<br /><span>Store</span></h2><p className="project-summary">A digital movie storefront where people can browse a catalog, share reviews, build a cart, place orders, and return to their purchase history.</p><div className="tag-list" aria-label="Technologies used"><span>Django</span><span>Python</span><span>SQLite</span><span>Bootstrap</span></div><div className="project-actions"><a className="button button-primary" href="/projects/movies-store">More information <span aria-hidden="true">-&gt;</span></a><a className="button button-secondary" href="https://aadishah.pythonanywhere.com/" target="_blank" rel="noreferrer">Live site <span aria-hidden="true">↗</span></a><a className="button button-secondary" href="https://github.com/aadi113467-gif/moviesstore" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a></div></div>
         </article>
       </section>
+      </div>
 
       <section className="experience-section section-shell" id="experience">
         <div className="section-heading"><p className="eyebrow"><span>04</span> Experience</p><p className="section-note">In progress.</p></div>
         <div className="experience-placeholder" data-reveal><span className="experience-marker" aria-hidden="true" /><p>I&apos;m still working on filling this section out.</p></div>
       </section>
 
+      <div className="scene-wrapper scene-contact" data-scene data-arrive-end="0.55" data-depart-start="1">
       <section className="contact-section section-shell" id="contact">
         <p className="eyebrow"><span>05</span> Contact</p><h2>Let&apos;s <em>connect.</em></h2>
-        <div className="contact-links" data-reveal><a className="contact-email" href="mailto:aadi113467@gmail.com"><MailIcon className="link-icon" />aadi113467@gmail.com <span aria-hidden="true">↗</span></a><span className="contact-link"><PhoneIcon className="link-icon" />470-437-8014</span><a className="contact-link" href="https://www.linkedin.com/in/aadi-shah123/" target="_blank" rel="noreferrer"><LinkedinIcon className="link-icon" />LinkedIn <span aria-hidden="true">↗</span></a></div>
+        <div className="contact-links"><a className="contact-email" href="mailto:aadi113467@gmail.com"><MailIcon className="link-icon" />aadi113467@gmail.com <span aria-hidden="true">↗</span></a><span className="contact-link"><PhoneIcon className="link-icon" />470-437-8014</span><a className="contact-link" href="https://www.linkedin.com/in/aadi-shah123/" target="_blank" rel="noreferrer"><LinkedinIcon className="link-icon" />LinkedIn <span aria-hidden="true">↗</span></a></div>
         <div className="contact-footer"><span>Aadi Shah / Portfolio</span><div><a href="#top">Back to top</a><a href="https://github.com/aadi113467-gif" target="_blank" rel="noreferrer">GitHub ↗</a></div></div>
       </section>
+      </div>
     </main>
   );
 }

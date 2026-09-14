@@ -1,3 +1,96 @@
+/* Scroll scenes: pinned, scroll-scrubbed sections (Apple-style). Disabled
+   entirely below 768px and under reduced-motion so those cases fall back to
+   plain, unpinned document flow with the sections' normal CSS. */
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  .scene-wrapper {
+    position: relative;
+    scroll-snap-align: start;
+  }
+
+  .scene-wrapper > .section-shell {
+    position: sticky;
+    scroll-snap-align: none;
+    top: 0;
+  }
+
+  /* Shorter pin ranges than a first pass at this (130/150/105vh, was
+     160/220/140vh) — the longer ones held the page still for too much scroll
+     distance and read as "stuck", not immersive. Motion is now carried mainly
+     by transform (slide/scale), with opacity only dipping partway (never to
+     0) so nothing reads as a cross-fade — content is always at least partly
+     visible and moving, never dissolving in/out. No blur: filter is expensive
+     mid-scroll and looked like a rendering glitch on the photo, not an exit. */
+  .scene-hero { height: 130vh; }
+  .scene-projects { height: 150vh; }
+  .scene-contact { height: 105vh; }
+
+  .scene-hero > .hero {
+    height: 100vh;
+    /* !important: beats `main .section-shell.is-current-stop { opacity:1 }`
+       (globals.css), which otherwise wins on specificity + later cascade order and
+       would cancel this scroll-scrubbed exit. */
+    opacity: calc(1 - var(--depart, 0) * 0.5) !important;
+    transform: scale(calc(1 + var(--depart, 0) * 0.05)) translateY(calc(var(--depart, 0) * -46px));
+    will-change: opacity, transform;
+  }
+
+  .scene-projects > .work-section {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    justify-content: center;
+    overflow: hidden;
+    padding: 24px 10vw;
+  }
+
+  .scene-projects .project-feature { margin-top: 20px; width: 100%; }
+  .scene-projects .project-visual { height: min(54vh, 440px); min-height: 0; }
+  .scene-projects .visual-window { height: calc(100% - 40px); }
+  .scene-projects .project-details { padding-top: 0; }
+  .scene-projects .project-details h2 { font-size: clamp(2.2rem, 4vw, 3.6rem); margin: 14px 0 12px; }
+  .scene-projects .project-summary { font-size: .85rem; }
+  .scene-projects .tag-list { margin-top: 16px; }
+  .scene-projects .project-actions { margin-top: 20px; }
+
+  .scene-projects .project-visual,
+  .scene-projects .project-details {
+    opacity: calc((0.4 + var(--arrive, 1) * 0.6) * (1 - var(--depart, 0) * 0.7));
+    will-change: opacity, transform;
+  }
+
+  .scene-projects .project-visual {
+    transform: scale(calc(0.92 + var(--arrive, 1) * 0.08 + var(--depart, 0) * 0.04)) translateY(calc((1 - var(--arrive, 1)) * 46px));
+  }
+
+  .scene-projects .project-details {
+    transform: translateY(calc((1 - var(--arrive, 1)) * 30px + var(--depart, 0) * -22px));
+  }
+
+  .scene-contact > .contact-section {
+    align-items: flex-start;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0 10vw;
+  }
+
+  .scene-contact .contact-section h2 { font-size: clamp(3rem, 6.5vw, 5.5rem); margin: 0 0 28px; }
+  .scene-contact .contact-links { gap: 14px; }
+  .scene-contact .contact-footer { margin-top: 40px; width: 100%; }
+
+  .scene-contact .eyebrow,
+  .scene-contact .contact-section h2,
+  .scene-contact .contact-links,
+  .scene-contact .contact-footer {
+    opacity: calc(0.4 + var(--arrive, 1) * 0.6);
+    transform: translateY(calc((1 - var(--arrive, 1)) * 28px));
+    will-change: opacity, transform;
+  }
+}
+
 main .hero-content {
   align-items: center;
   gap: 4vw;
