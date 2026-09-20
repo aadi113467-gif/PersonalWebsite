@@ -1,94 +1,442 @@
-/* Scroll scenes: pinned, scroll-scrubbed sections (Apple-style). Disabled
-   entirely below 768px and under reduced-motion so those cases fall back to
-   plain, unpinned document flow with the sections' normal CSS. */
+/* MARTA ride: the home page is a sequence of full-viewport "stops" instead
+   of a normal scrolling document. Disabled below 768px and under
+   reduced-motion (see marta-ride.tsx's `enabled` check, which mirrors this
+   exact media condition) — those cases render plain stacked sections with
+   normal document scroll, so nothing here should leak into that path. */
 @media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
-  .scene-wrapper {
+  .marta-viewport {
+    height: 100dvh;
+    overflow: hidden;
     position: relative;
-    scroll-snap-align: start;
   }
 
-  .scene-wrapper > .section-shell {
-    position: sticky;
-    scroll-snap-align: none;
+  body.marta-active {
+    overflow: hidden;
+  }
+
+  /* The hero's own inline header only makes sense in the mobile/reduced-
+     motion fallback, where it's the first thing in a normal stacked
+     document. In the full ride it would vanish the moment you left Home
+     (each stop is its own opaque takeover), so SiteNavBar renders a
+     persistent replacement outside every stop instead — hide the inline
+     one here so they don't double up on Home. */
+  .hero .site-header {
+    display: none;
+  }
+
+  /* Persistent top nav (site-nav-bar.tsx): unlike the inline header it
+     replaces, this sits outside every .marta-stop, so it's the one piece of
+     chrome that's always on screen no matter which stop is active — "click
+     whichever page you want, from the top, at any time." */
+  .persistent-nav {
+    align-items: center;
+    background: color-mix(in srgb, var(--paper) 90%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    left: 0;
+    padding: 22px 5vw;
+    position: fixed;
+    right: 0;
     top: 0;
+    z-index: 6;
   }
 
-  /* Shorter pin ranges than a first pass at this (130/150/105vh, was
-     160/220/140vh) — the longer ones held the page still for too much scroll
-     distance and read as "stuck", not immersive. Motion is now carried mainly
-     by transform (slide/scale), with opacity only dipping partway (never to
-     0) so nothing reads as a cross-fade — content is always at least partly
-     visible and moving, never dissolving in/out. No blur: filter is expensive
-     mid-scroll and looked like a rendering glitch on the photo, not an exit. */
-  .scene-hero { height: 130vh; }
-  .scene-projects { height: 150vh; }
-  .scene-contact { height: 105vh; }
-
-  .scene-hero > .hero {
-    height: 100vh;
-    /* !important: beats `main .section-shell.is-current-stop { opacity:1 }`
-       (globals.css), which otherwise wins on specificity + later cascade order and
-       would cancel this scroll-scrubbed exit. */
-    opacity: calc(1 - var(--depart, 0) * 0.5) !important;
-    transform: scale(calc(1 + var(--depart, 0) * 0.05)) translateY(calc(var(--depart, 0) * -46px));
-    will-change: opacity, transform;
+  .persistent-nav .site-nav {
+    margin-left: 0;
   }
 
-  .scene-projects > .work-section {
+  /* Specificity note: these use the .marta-viewport ancestor to reliably
+     beat .section-shell's `position: relative` (globals.css), which has the
+     same specificity as a bare `.marta-stop` rule and loads later in the
+     cascade since transit-refinements.css is @imported at the top of
+     globals.css. */
+  .marta-viewport .marta-stop {
+    inset: 0;
+    height: 100dvh;
+    opacity: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    pointer-events: none;
+    position: absolute;
+    visibility: hidden;
+    z-index: 0;
+  }
+
+  /* The departure board (.transit-rail below) floats fixed over every stop,
+     so each stop needs its own reserved clearance at the bottom or its last
+     line of content — a tag row, a footer caption — scrolls to a dead stop
+     right underneath the panel and stays hidden. Bumping each stop's own
+     padding-bottom (rather than a generic pseudo-element) keeps this from
+     clobbering .hero's decorative ::before/::after. */
+  .marta-viewport .hero { padding-bottom: calc(42px + var(--rail-clearance)); }
+  .marta-viewport .split-section { padding-bottom: calc(145px + var(--rail-clearance)); }
+  .marta-viewport .projects-intro { padding-bottom: calc(40px + var(--rail-clearance)); }
+  .marta-viewport .experience-section { padding-bottom: calc(145px + var(--rail-clearance)); }
+  .marta-viewport .contact-section { padding-bottom: calc(35px + var(--rail-clearance)); }
+
+  /* The persistent top nav is the mirror-image problem: it's fixed over
+     every stop too, so whichever stop has little top padding of its own
+     needs the same treatment. split-section (About)'s 22px is tuned for
+     the mobile/reduced-motion fallback, where there's no fixed top bar at
+     all — in ride mode that left its "02 About" heading scrolling straight
+     up underneath the nav. */
+  .marta-viewport .split-section { padding-top: calc(22px + var(--nav-clearance)); }
+
+  /* hero-footer is pinned with `position: absolute; bottom`, measured from
+     .hero's own fixed 100dvh box rather than from where hero-content
+     actually ends — pushing that offset out to clear the rail drove it
+     straight into hero-content instead (the description text/links don't
+     reliably reach anywhere near the true bottom edge). Flow it in
+     normally right after hero-content instead: it settles just below
+     whatever height that content actually takes, never overlapping it,
+     and the extra padding-bottom above already guarantees room to scroll
+     it fully into view above the rail. */
+  .marta-viewport .hero-footer {
+    bottom: auto;
+    margin-top: 36px;
+    position: static;
+    /* Its 80%-width-within-the-absolute-box was how the original design
+       inset it further than .hero's own 10vw padding already does; in
+       normal flow that same 80% instead resolves against the padded
+       content box itself, shrinking and misaligning the row. Full width
+       of that content box reproduces the original span exactly. */
+    width: 100%;
+  }
+
+  .marta-viewport .marta-stop.is-active {
+    animation: marta-arrive .6s cubic-bezier(.16, 1, .3, 1) both;
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+    z-index: 2;
+  }
+
+  .marta-viewport .marta-stop.is-leaving {
+    animation: marta-depart .3s ease both;
+    opacity: 1;
+    pointer-events: none;
+    visibility: visible;
+    z-index: 1;
+  }
+
+  /* Scale + blur only, deliberately no translateY: a vertical slide is what
+     makes a cut read as "the page moving down/up", which fights the
+     first-person "moving forward" feel the tunnel is selling. Arriving
+     grows from slightly smaller (as if approaching from a small point in
+     the distance) toward full size in place; departing grows slightly
+     larger while blurring out (as if flying through it) — pure depth, no
+     vertical motion. */
+  @keyframes marta-arrive {
+    0% { opacity: 0; filter: blur(6px); transform: scale(.94); }
+    100% { opacity: 1; filter: blur(0); transform: scale(1); }
+  }
+
+  @keyframes marta-depart {
+    0% { opacity: 1; filter: blur(0); transform: scale(1); }
+    100% { opacity: 0; filter: blur(6px); transform: scale(1.06); }
+  }
+
+  /* First-person "driving the train" transition overlay between stops: a
+     short, sped-up clip of real cockpit-POV footage (public/marta-clip-
+     *.mp4 — see train-tunnel.tsx for which clip plays into which stop),
+     color-graded toward the site's red/gold palette, with gold speed
+     streaks, a subtle whole-scene rumble, and a HUD-style stop readout on
+     top. Real footage already carries genuine forward motion and depth, so
+     unlike the old single-photo version there's no need to fake parallax
+     with separate zooming layers — the video just plays. Only forward
+     navigation into an unvisited stop plays this — see playTunnel in
+     marta-ride.tsx; everything else uses .marta-tunnel-quiet. The ONLY
+     thing that ends the transition is this outer element's own no-op timer
+     animation (marta-tunnel-timer), guarded in JS against bubbled child
+     animationend events — a streak or the label finishing early must never
+     cut the sequence short. Kept at 1.8s total (each clip is cut/sped up to
+     ~1.875s) so every transition lands well under the 2s cap. */
+  .marta-tunnel {
+    animation: marta-tunnel-timer 1.8s linear both;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    position: fixed;
+    z-index: 50;
+  }
+
+  @keyframes marta-tunnel-timer {
+    from { opacity: 1; }
+    to { opacity: 1; }
+  }
+
+  .marta-tunnel-scene {
+    animation: marta-tunnel-rumble 1.8s linear both;
+    background: var(--ink);
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+  }
+
+  /* Continuous small multi-axis jitter for the whole ride, layered on top
+     of the footage's own motion — sells the sense of a physical vehicle
+     rather than a clip just playing back. */
+  @keyframes marta-tunnel-rumble {
+    0%, 8% { transform: translate(0, 0); }
+    8% { transform: translate(0, 0); }
+    18% { transform: translate(-1px, 1px); }
+    29% { transform: translate(1px, -1px); }
+    40% { transform: translate(-2px, -1px) rotate(-.15deg); }
+    51% { transform: translate(2px, 1px) rotate(.15deg); }
+    62% { transform: translate(-1px, 2px); }
+    73% { transform: translate(1px, -2px) rotate(-.1deg); }
+    84% { transform: translate(-1px, 1px); }
+    93% { transform: translate(1px, 0); }
+    100% { transform: translate(0, 0); }
+  }
+
+  .marta-tunnel-video {
+    height: 100%;
+    left: 0;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    width: 100%;
+    /* sepia+hue-rotate+saturate recolors the footage's cyan/violet
+       cyberpunk neon into the site's warm red/gold palette while keeping
+       its contrast and vividness; this is a static filter, never
+       animated — the motion is all real, from the video itself. */
+    filter: sepia(.5) saturate(2.9) hue-rotate(-22deg) brightness(.92) contrast(1.15);
+    animation: marta-video-in .5s ease both;
+  }
+
+  /* A quick punch-in as the clip starts, echoing the old zoom-in without
+     fighting the footage's own already-fast motion. */
+  @keyframes marta-video-in {
+    0% { opacity: 0; transform: scale(1.08); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  /* Speed streaks fan outward from the same vanishing point, each a
+     statically-rotated wedge whose inner bar animates translate/scale along
+     its own axis — this radiates like passing light rather than sliding
+     sideways, which is what actually sells "moving toward a point." */
+  .marta-tunnel-streaks span {
+    height: 2px;
+    left: 57%;
+    position: absolute;
+    top: 42%;
+    transform: rotate(calc(var(--i) * 47deg - 95deg));
+    transform-origin: 0 0;
+    width: 55vw;
+  }
+
+  .marta-tunnel-streaks span::before {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 88%, white), transparent);
+    border-radius: 999px;
+    content: "";
+    display: block;
+    height: 100%;
+    opacity: 0;
+    width: 100%;
+    will-change: transform, opacity;
+    animation: marta-streak .85s cubic-bezier(.3, 0, .2, 1) both;
+    animation-delay: calc(160ms + var(--i) * 60ms);
+  }
+
+  @keyframes marta-streak {
+    0% { opacity: 0; transform: translateX(-8%) scaleX(.12); }
+    35% { opacity: .9; }
+    100% { opacity: 0; transform: translateX(12%) scaleX(1); }
+  }
+
+  .marta-tunnel-vignette {
+    background: radial-gradient(ellipse at 50% 55%, transparent 55%, var(--ink) 140%);
+    inset: 0;
+    position: absolute;
+    z-index: 1;
+  }
+
+  .marta-tunnel-label {
+    background: color-mix(in srgb, var(--ink) 62%, transparent);
+    border-radius: 3px;
+    color: var(--white);
+    left: 50%;
+    padding: 18px 36px;
+    position: absolute;
+    text-align: center;
+    top: 46%;
+    transform: translate(-50%, -50%);
+    will-change: transform, opacity;
+    animation: marta-label-pop 1.8s ease both;
+    z-index: 2;
+  }
+
+  .marta-tunnel-label span {
+    color: color-mix(in srgb, var(--gold) 85%, white);
+    display: block;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+  }
+
+  .marta-tunnel-label strong {
+    display: block;
+    font-family: Georgia, serif;
+    font-size: clamp(2rem, 5vw, 3.4rem);
+    font-weight: 400;
+    letter-spacing: -.03em;
+    margin-top: 6px;
+  }
+
+  @keyframes marta-label-pop {
+    0%, 15% { opacity: 0; transform: translate(-50%, -50%) scale(.9); }
+    40%, 78% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1.04); }
+  }
+
+  /* Backward navigation: no tunnel, just time out once the normal
+     marta-depart/marta-arrive stop crossfade (the longer of which is
+     marta-arrive at .6s) has finished. */
+  .marta-tunnel-quiet {
+    animation: marta-tunnel-timer .6s linear both;
+    inset: 0;
+    pointer-events: none;
+    position: fixed;
+  }
+
+  /* One-time boarding sequence into Home — deliberately not the tunnel, so
+     the very first thing a visitor sees reads as a distinct "welcome
+     aboard" moment rather than a mid-ride effect. It fully covers the
+     viewport (opaque, no fixed-position descendants of its own) so its own
+     exit transform can safely stand in for "the whole page spinning in" —
+     no risk of it becoming a transformed containing block for some other
+     fixed element, the way animating .marta-viewport itself would. */
+  .marta-boot {
+    align-items: center;
+    animation: marta-boot-fade 1.3s cubic-bezier(.3, 0, .4, 1) both;
+    background: var(--ink);
+    display: flex;
+    flex-direction: column;
+    inset: 0;
+    justify-content: center;
+    pointer-events: none;
+    position: fixed;
+    transform-origin: 50% 50%;
+    z-index: 60;
+  }
+
+  /* Holds solid while the welcome copy plays in, then spins/scales/blurs
+     the whole screen away — like the platform whirling into the first
+     tunnel — to reveal the Home stop already arriving underneath. */
+  @keyframes marta-boot-fade {
+    0%, 55% { opacity: 1; filter: blur(0); transform: perspective(1200px) rotate(0deg) scale(1); }
+    100% { opacity: 0; filter: blur(16px); transform: perspective(1200px) rotate(24deg) scale(1.6); }
+  }
+
+  .marta-boot-badge {
     align-items: center;
     display: flex;
-    flex-direction: column;
-    height: 100vh;
+    height: 62px;
     justify-content: center;
-    overflow: hidden;
-    padding: 24px 10vw;
+    margin-bottom: 20px;
+    opacity: 0;
+    position: relative;
+    width: 62px;
+    animation: marta-boot-in .5s ease both;
   }
 
-  .scene-projects .project-feature { margin-top: 20px; width: 100%; }
-  .scene-projects .project-visual { height: min(54vh, 440px); min-height: 0; }
-  .scene-projects .visual-window { height: calc(100% - 40px); }
-  .scene-projects .project-details { padding-top: 0; }
-  .scene-projects .project-details h2 { font-size: clamp(2.2rem, 4vw, 3.6rem); margin: 14px 0 12px; }
-  .scene-projects .project-summary { font-size: .85rem; }
-  .scene-projects .tag-list { margin-top: 16px; }
-  .scene-projects .project-actions { margin-top: 20px; }
-
-  .scene-projects .project-visual,
-  .scene-projects .project-details {
-    opacity: calc((0.4 + var(--arrive, 1) * 0.6) * (1 - var(--depart, 0) * 0.7));
-    will-change: opacity, transform;
+  .marta-boot-badge-ring {
+    animation: marta-badge-spin 1.3s linear infinite;
+    border: 2px solid color-mix(in srgb, var(--gold) 22%, transparent);
+    border-radius: 50%;
+    border-top-color: var(--gold);
+    border-right-color: color-mix(in srgb, var(--gold) 55%, transparent);
+    inset: 0;
+    position: absolute;
   }
 
-  .scene-projects .project-visual {
-    transform: scale(calc(0.92 + var(--arrive, 1) * 0.08 + var(--depart, 0) * 0.04)) translateY(calc((1 - var(--arrive, 1)) * 46px));
+  .marta-boot-badge-core {
+    color: var(--white);
+    font-family: Georgia, serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .02em;
   }
 
-  .scene-projects .project-details {
-    transform: translateY(calc((1 - var(--arrive, 1)) * 30px + var(--depart, 0) * -22px));
+  @keyframes marta-badge-spin {
+    to { transform: rotate(360deg); }
   }
 
-  .scene-contact > .contact-section {
-    align-items: flex-start;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    justify-content: center;
-    overflow: hidden;
-    padding: 0 10vw;
+  .marta-boot-eyebrow {
+    color: color-mix(in srgb, var(--gold) 80%, white);
+    font-size: .62rem;
+    font-weight: 700;
+    letter-spacing: .18em;
+    opacity: 0;
+    text-transform: uppercase;
+    animation: marta-boot-in .5s ease .12s both;
   }
 
-  .scene-contact .contact-section h2 { font-size: clamp(3rem, 6.5vw, 5.5rem); margin: 0 0 28px; }
-  .scene-contact .contact-links { gap: 14px; }
-  .scene-contact .contact-footer { margin-top: 40px; width: 100%; }
-
-  .scene-contact .eyebrow,
-  .scene-contact .contact-section h2,
-  .scene-contact .contact-links,
-  .scene-contact .contact-footer {
-    opacity: calc(0.4 + var(--arrive, 1) * 0.6);
-    transform: translateY(calc((1 - var(--arrive, 1)) * 28px));
-    will-change: opacity, transform;
+  .marta-boot-mark {
+    color: var(--white);
+    font-family: Georgia, serif;
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    font-weight: 400;
+    letter-spacing: -.03em;
+    margin: 14px 0 0;
+    opacity: 0;
+    animation: marta-boot-in .6s ease .26s both;
   }
+
+  .marta-boot-mark em { color: var(--gold); font-style: italic; }
+
+  .marta-boot-route {
+    color: color-mix(in srgb, var(--white) 60%, transparent);
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    margin: 10px 0 0;
+    opacity: 0;
+    text-transform: uppercase;
+    animation: marta-boot-in .5s ease .4s both;
+  }
+
+  .marta-boot-line {
+    background: var(--gold);
+    height: 2px;
+    margin-top: 22px;
+    transform: scaleX(0);
+    transform-origin: left;
+    width: 220px;
+    animation: marta-boot-line-in .5s ease .58s both;
+  }
+
+  .marta-boot-caption {
+    color: color-mix(in srgb, var(--white) 70%, transparent);
+    font-size: .64rem;
+    font-weight: 700;
+    letter-spacing: .2em;
+    margin-top: 18px;
+    opacity: 0;
+    text-transform: uppercase;
+    animation: marta-boot-in .5s ease .74s both;
+  }
+
+  @keyframes marta-boot-in {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes marta-boot-line-in {
+    to { transform: scaleX(1); }
+  }
+
+  /* Movies Store now lives inside the "Projects" stop's own inner scroll
+     instead of its own pinned scene, so it needs less lead-in space than a
+     standalone .work-section normally gets. */
+  .movies-store-block { padding-bottom: 60px; padding-top: 60px; }
+
 }
 
 main .hero-content {
@@ -118,29 +466,32 @@ main .hero-content {
 
 .hero-ambient::before {
   animation: hero-drift-a 24s ease-in-out infinite;
-  background: radial-gradient(circle, color-mix(in srgb, var(--red) 20%, transparent) 0%, transparent 72%);
-  height: 520px;
-  right: -140px;
-  top: -180px;
-  width: 520px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--gold) 38%, transparent) 0%, transparent 72%);
+  height: 560px;
+  right: -160px;
+  top: -200px;
+  width: 560px;
 }
 
 .hero-ambient::after {
   animation: hero-drift-b 28s ease-in-out infinite;
-  background: radial-gradient(circle, color-mix(in srgb, var(--green) 16%, transparent) 0%, transparent 72%);
-  height: 440px;
-  left: -150px;
-  bottom: -190px;
-  width: 440px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--red) 28%, transparent) 0%, transparent 72%);
+  height: 460px;
+  left: -160px;
+  bottom: -200px;
+  width: 460px;
 }
 
+/* Faint tile-grout dots instead of the site-wide dark-on-paper grid — this
+   is the one spot the grid reads on a dark platform surface, so it gets its
+   own light-on-dark variant rather than reusing the shared token. */
 .hero-grid {
-  background-image: radial-gradient(color-mix(in srgb, var(--ink) 15%, transparent) 1px, transparent 1.5px);
+  background-image: radial-gradient(color-mix(in srgb, var(--white) 16%, transparent) 1px, transparent 1.5px);
   background-size: 28px 28px;
   inset: 0;
   -webkit-mask-image: radial-gradient(ellipse 60% 55% at 62% 32%, black 0%, transparent 75%);
   mask-image: radial-gradient(ellipse 60% 55% at 62% 32%, black 0%, transparent 75%);
-  opacity: .55;
+  opacity: .5;
   position: absolute;
 }
 
@@ -214,6 +565,7 @@ main .hero-content {
 }
 
 main .hero h1 {
+  color: var(--white);
   font-size: clamp(4.3rem, 8vw, 8rem);
   line-height: .82;
   min-width: 0;
@@ -223,13 +575,24 @@ main .hero h1 {
 
 .hero-copy { min-width: 0; }
 
-@media (min-width: 901px) {
-  main .hero-copy { padding-left: 92px; }
-}
-.hero-description { color: var(--muted); font-size: .96rem; line-height: 1.7; margin: 34px 0 0; max-width: 440px; }
+/* Dark-platform overrides: the hero is the one section on the site with an
+   ink background instead of paper, so its copy needs its own light-on-dark
+   tokens rather than the shared var(--muted) (tuned for paper) — see
+   .hero's background change above for why. */
+.hero .hero-kicker { color: color-mix(in srgb, var(--gold) 75%, white); }
+.hero-description { color: color-mix(in srgb, var(--white) 68%, transparent); font-size: .96rem; line-height: 1.7; margin: 34px 0 0; max-width: 440px; }
 .hero-links { display: flex; gap: 28px; margin-top: 28px; }
-.hero-links a { border-bottom: 2px solid var(--red); font-size: .7rem; font-weight: 700; letter-spacing: .1em; padding-bottom: 7px; text-transform: uppercase; }
+.hero-links a { border-bottom: 2px solid var(--red); color: var(--white); font-size: .7rem; font-weight: 700; letter-spacing: .1em; padding-bottom: 7px; text-transform: uppercase; }
 .hero-links span { color: var(--red); margin-left: 10px; }
+
+/* Mobile/reduced-motion fallback only (see .hero .site-header { display:
+   none } above, scoped to the desktop ride): this inline header sits
+   directly on the hero's own dark background with no floating bar behind
+   it, unlike SiteNavBar's persistent-nav, so it needs the same light-on-
+   dark treatment as the rest of the hero's copy. */
+.hero .site-header .wordmark { color: var(--white); }
+.hero .site-header .site-nav a,
+.hero .site-header .header-availability { color: color-mix(in srgb, var(--white) 65%, transparent); }
 .hero-links a:hover { color: var(--red); }
 
 .hero-portrait {
@@ -261,7 +624,7 @@ main .hero-aside::before {
 
 main .hero-aside::after {
   background: var(--gold);
-  border: 5px solid var(--paper);
+  border: 5px solid #1c2126;
   border-radius: 50%;
   box-shadow: 0 0 0 2px var(--gold);
   content: "";
@@ -272,12 +635,17 @@ main .hero-aside::after {
   width: 16px;
 }
 
+/* A dark mat with a slim gold hairline instead of the site-wide white
+   photo-paper frame (used as-is on About/Projects/Experience, where the
+   page itself is paper-colored) — that white mat read as a stark bright
+   block against the hero's own dark platform background, so this is its
+   one dark-context variant. */
 .hero-headshot-frame {
   animation: photo-arrive 1s cubic-bezier(.16, 1, .3, 1) both;
   animation-delay: .15s;
-  background: var(--white);
-  border: 8px solid var(--white);
-  box-shadow: 10px 10px 0 var(--gold);
+  background: #1c2126;
+  border: 5px solid #1c2126;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 45%, transparent), 10px 10px 0 var(--gold);
   filter: saturate(.9) contrast(1.02);
   position: relative;
   transform: rotate(2deg);
@@ -286,7 +654,7 @@ main .hero-aside::after {
 }
 
 .hero-headshot-frame:hover {
-  box-shadow: 15px 15px 0 var(--gold);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 60%, transparent), 15px 15px 0 var(--gold);
   transform: rotate(0deg) translateY(-5px);
 }
 
@@ -326,10 +694,6 @@ main .section-heading::before {
   border-top: 0;
 }
 
-.experience-placeholder {
-  border: 0;
-}
-
 main .case-meta,
 main .contact-footer,
 main .architecture-note {
@@ -340,10 +704,6 @@ main .architecture-note {
   margin: 0 auto;
   max-width: 980px;
   padding: 32px 0 0;
-}
-
-@media (min-width: 901px) {
-  main .about-content { padding-left: 90px; }
 }
 
 .about-intro { margin: 0 auto; max-width: 690px; text-align: center; }
@@ -445,6 +805,235 @@ main .architecture-note {
 main .split-section { padding-bottom: 85px; }
 main .section-heading .eyebrow { color: var(--ink); font-size: .72rem; font-weight: 900; letter-spacing: .18em; }
 
+/* Experience route */
+.exp-route {
+  border-left: 2px solid var(--line);
+  margin: 64px 0 0 3px;
+  max-width: 760px;
+}
+
+.exp-stop {
+  --accent: var(--red);
+  margin-left: -2px;
+  padding: 0 0 44px 34px;
+  position: relative;
+}
+
+.exp-stop:last-child { padding-bottom: 0; }
+.exp-stop.stop-gold { --accent: var(--gold); }
+.exp-stop.stop-green { --accent: var(--green); }
+
+.exp-dot {
+  background: var(--paper);
+  border: 2.5px solid var(--accent);
+  border-radius: 50%;
+  height: 13px;
+  left: -8px;
+  position: absolute;
+  top: 5px;
+  transition: background .2s ease, transform .2s ease;
+  width: 13px;
+}
+
+.exp-stop.is-open .exp-dot { background: var(--accent); transform: scale(1.15); }
+
+.exp-head {
+  align-items: flex-start;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: 18px;
+  justify-content: space-between;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.exp-head-main { display: flex; flex-direction: column; gap: 7px; }
+
+.exp-title {
+  color: var(--ink);
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  transition: color .2s ease;
+}
+
+.exp-stop:hover .exp-title { color: var(--accent); }
+
+.exp-company { color: var(--muted); font-size: .82rem; }
+.exp-sep { color: var(--line); }
+
+.exp-head-meta {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+  padding-top: 3px;
+}
+
+.exp-dates {
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.exp-chevron {
+  height: 15px;
+  transition: transform .3s cubic-bezier(.16, 1, .3, 1), color .2s ease;
+  width: 15px;
+}
+
+.exp-stop.is-open .exp-chevron { color: var(--accent); transform: rotate(90deg); }
+
+.exp-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .4s cubic-bezier(.16, 1, .3, 1);
+}
+
+.exp-stop.is-open .exp-panel { grid-template-rows: 1fr; }
+
+.exp-panel-inner { overflow: hidden; }
+
+.exp-panel-inner p {
+  color: var(--muted);
+  font-size: .92rem;
+  line-height: 1.7;
+  margin: 18px 0 16px;
+  max-width: 640px;
+}
+
+.exp-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.exp-tags span { background: var(--white); border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: .68rem; font-weight: 700; padding: 6px 11px; }
+.exp-stop.stop-red .exp-tags span { border-color: color-mix(in srgb, var(--red) 45%, var(--line)); }
+.exp-stop.stop-gold .exp-tags span { border-color: color-mix(in srgb, var(--gold) 55%, var(--line)); }
+.exp-stop.stop-green .exp-tags span { border-color: color-mix(in srgb, var(--green) 55%, var(--line)); }
+
+@media (max-width: 720px) {
+  .exp-route { margin-top: 46px; }
+  .exp-stop { padding-bottom: 34px; padding-left: 26px; }
+  .exp-head { flex-direction: column; gap: 10px; }
+  .exp-head-meta { padding-top: 0; }
+  .exp-title { font-size: 1rem; }
+}
+
+/* Featured project grid (repos without a live deploy) */
+.projects-intro { padding-bottom: 40px; padding-top: 135px; }
+
+.feature-grid {
+  display: grid;
+  gap: 5vw;
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 60px;
+}
+
+.feature-card { display: flex; flex-direction: column; }
+
+.feature-visual {
+  background: var(--ink);
+  padding: 22px 24px 26px;
+  position: relative;
+}
+
+.feature-visual-top {
+  color: #d8cdbb;
+  display: flex;
+  font-size: .6rem;
+  font-weight: 700;
+  gap: 12px;
+  justify-content: space-between;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.feature-visual-top span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feature-stats { display: flex; gap: 32px; margin-top: 38px; }
+.feature-stats div { display: flex; flex-direction: column; gap: 7px; }
+.feature-stats strong { color: var(--gold); font-family: Georgia, serif; font-size: 2.2rem; letter-spacing: -.03em; line-height: 1; }
+.feature-stats span { color: #a89c86; font-size: .6rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+
+.feature-spark { height: 34px; margin-top: 30px; opacity: .55; }
+.feature-spark svg { display: block; height: 100%; width: 100%; }
+.feature-spark polyline { fill: none; stroke: var(--gold); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+
+.feature-card.stop-green .feature-stats strong,
+.feature-card.stop-green .feature-spark polyline { color: var(--green); stroke: var(--green); }
+
+.feature-details { padding-top: 26px; }
+
+.feature-details h3 {
+  font-family: Georgia, serif;
+  font-size: clamp(1.4rem, 2.2vw, 1.8rem);
+  font-weight: 400;
+  letter-spacing: -.02em;
+  line-height: 1.05;
+  margin: 10px 0 14px;
+}
+
+.feature-summary { color: var(--muted); font-size: .87rem; line-height: 1.7; }
+
+.feature-toggle {
+  align-items: center;
+  background: none;
+  border: 0;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: .68rem;
+  font-weight: 700;
+  gap: 7px;
+  letter-spacing: .08em;
+  margin-top: 18px;
+  padding: 4px 0;
+  text-transform: uppercase;
+}
+
+.feature-card.stop-gold .feature-toggle { color: var(--gold); }
+.feature-card.stop-green .feature-toggle { color: var(--green); }
+
+.feature-toggle-icon {
+  height: 12px;
+  transition: transform .3s cubic-bezier(.16, 1, .3, 1);
+  width: 12px;
+}
+
+.feature-toggle[aria-expanded="true"] .feature-toggle-icon { transform: rotate(90deg); }
+
+.feature-more {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .4s cubic-bezier(.16, 1, .3, 1);
+}
+
+.feature-toggle[aria-expanded="true"] + .feature-more { grid-template-rows: 1fr; }
+
+.feature-more-inner { overflow: hidden; }
+.feature-more-inner p { color: var(--muted); font-size: .87rem; line-height: 1.7; margin: 16px 0 0; }
+
+.feature-details .tag-list { margin-top: 22px; }
+.feature-details .project-actions { margin-top: 24px; }
+
+@media (max-width: 900px) {
+  .feature-grid { grid-template-columns: 1fr; gap: 46px; }
+}
+
+@media (max-width: 720px) {
+  .projects-intro { padding-bottom: 20px; padding-top: 95px; }
+  .feature-grid { margin-top: 42px; }
+}
+
 @media (max-width: 720px) {
   main .hero-content {
     display: block;
@@ -489,28 +1078,118 @@ main .section-heading .eyebrow { color: var(--ink); font-size: .72rem; font-weig
   .skill-list { margin-top: 12px; }
 }
 
+/* Reserved clearance every stop keeps at its own bottom so the fixed
+   departure board below never sits on top of content — see the
+   .marta-viewport padding-bottom rules above. Kept as a variable so the
+   panel's own sizing and the space other rules reserve for it can't drift
+   out of sync. */
+:root {
+  --rail-clearance: 190px;
+  --nav-clearance: 110px;
+}
+
+/* TransitRail renders (and stays fixed) below 768px and under
+   reduced-motion too, where .marta-viewport is just a normal stacked
+   document instead of the full-viewport ride — so the plain document flow
+   needs the same reserved space at its very end, or the last section's
+   content ends the page hidden behind the panel with no further scroll
+   left to clear it. Harmless in ride mode: that layout gives
+   .marta-viewport an explicit height instead of sizing from content, so
+   this padding has nothing to push against. */
+main.marta-viewport {
+  padding-bottom: var(--rail-clearance);
+}
+
+/* Bottom "departure board": one glowing panel fixed at the bottom center of
+   the screen at every width, instead of a strip of pills tucked against the
+   left edge fighting the hero copy for attention. This is the site's actual
+   way of getting around, so it gets sign-board presence — dark ink panel,
+   gold trim, an illuminated active stop — rather than hiding in the margin.
+   It rises into view once the boot sequence clears (delay matches marta-
+   boot's ~1.1s fade start, see marta-boot-fade in this file) instead of
+   being on screen from the very first frame, so it reads as its own
+   "welcome to the platform" beat rather than always-there chrome.
+   Glassy rather than a flat ink card: a blurred, translucent panel with a
+   soft gold ambient glow and a hairline sheen across the top reads as an
+   actual illuminated sign floating over the platform, not a pasted-on UI
+   bar. */
 .transit-rail {
-  align-items: flex-start;
+  align-items: center;
+  animation: rail-panel-in .7s cubic-bezier(.16, 1, .3, 1) 1.1s both;
+  background: linear-gradient(180deg, color-mix(in srgb, #262d33 92%, transparent) 0%, color-mix(in srgb, #14171a 94%, transparent) 100%);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  border-radius: 20px;
+  bottom: 26px;
+  box-shadow:
+    0 24px 60px -18px rgba(0, 0, 0, .65),
+    0 0 60px -22px color-mix(in srgb, var(--gold) 55%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, .08),
+    inset 0 0 0 1px rgba(255, 255, 255, .03);
   display: flex;
-  gap: 24px;
-  left: 2.4vw;
+  flex-direction: column;
+  gap: 13px;
+  isolation: isolate;
+  left: 50%;
+  overflow: hidden;
+  padding: 16px 28px 14px;
   position: fixed;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 5;
+  transform: translateX(-50%);
+  z-index: 20;
+}
+
+.transit-rail::before {
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--gold) 70%, transparent), transparent);
+  content: "";
+  height: 1px;
+  left: 8%;
+  opacity: .8;
+  position: absolute;
+  top: 0;
+  width: 84%;
+}
+
+@keyframes rail-panel-in {
+  0% { opacity: 0; transform: translate(-50%, 30px); }
+  100% { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transit-rail { animation: none; }
+}
+
+.rail-label {
+  color: color-mix(in srgb, var(--gold) 78%, white);
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: .17em;
+  margin: 0;
+  order: 1;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.rail-stops {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  order: 2;
 }
 
 .rail-track {
-  background: var(--line);
-  height: 220px;
+  background: color-mix(in srgb, var(--white) 14%, transparent);
+  border-radius: 999px;
+  height: 4px;
+  order: 3;
+  overflow: hidden;
   position: relative;
-  width: 3px;
+  width: 100%;
 }
 
 .rail-progress {
-  background: var(--red);
-  display: block;
-  max-height: 100%;
+  background: linear-gradient(90deg, var(--red), var(--gold));
+  height: 100% !important;
   position: absolute;
   top: 0;
   transition: none;
@@ -520,66 +1199,81 @@ main .section-heading .eyebrow { color: var(--ink); font-size: .72rem; font-weig
 .rail-car {
   align-items: center;
   background: var(--gold);
-  border: 4px solid var(--paper);
+  border: 3px solid #14171a;
   border-radius: 50%;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 35%, transparent);
   color: transparent;
   display: flex;
   font-size: 0;
-  height: 18px;
+  height: 14px;
   justify-content: center;
-  left: -7px !important;
+  left: calc(var(--rail-position, 0) * 1%) !important;
   position: absolute;
-  transition: background .25s ease;
-  width: 18px;
+  top: -5px !important;
+  transition: background .25s ease, left .8s cubic-bezier(.4, 0, .2, 1);
+  width: 14px;
 }
 
-.rail-stops {
-  display: flex;
-  flex-direction: column;
-  gap: 29px;
-}
-
+/* These are the site's actual navigation controls, not a subtle progress
+   list — real buttons, dim by default and lighting up on hover, so "click
+   one of these" still reads immediately even styled as sign-board text
+   instead of the old offset-shadow pill cards. */
 .rail-stop {
   align-items: center;
-  color: var(--muted);
+  background: color-mix(in srgb, var(--white) 4%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--white) 22%, transparent);
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--white) 62%, transparent);
   display: flex;
-  font-size: .58rem;
-  font-weight: 700;
+  font-size: .68rem;
+  font-weight: 800;
   gap: 8px;
-  letter-spacing: .08em;
+  letter-spacing: .05em;
+  padding: 9px 16px;
   text-transform: uppercase;
-  transition: color .2s ease;
+  transition: transform .15s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+}
+
+.rail-stop:hover {
+  background: color-mix(in srgb, var(--white) 8%, transparent);
+  border-color: color-mix(in srgb, var(--white) 45%, transparent);
+  color: var(--white);
+  transform: translateY(-2px);
 }
 
 .rail-dot {
-  background: var(--paper);
-  border: 2px solid var(--line);
+  background: currentColor;
   border-radius: 50%;
   display: block;
-  height: 9px;
+  height: 7px;
   margin-left: 0;
-  transition: background .2s ease, border-color .2s ease, transform .2s ease;
-  width: 9px;
+  opacity: .65;
+  transition: background .15s ease, transform .15s ease, opacity .15s ease;
+  width: 7px;
 }
 
-.rail-stop:hover, .rail-stop.is-active { color: var(--ink); }
-.rail-stop.is-active .rail-dot { border-color: currentColor; transform: scale(1.45); }
-.rail-stop.is-active.stop-red .rail-dot { background: var(--red); color: var(--red); }
-.rail-stop.is-active.stop-gold .rail-dot { background: var(--gold); color: var(--gold); }
-.rail-stop.is-active.stop-green .rail-dot { background: var(--green); color: var(--green); }
-.rail-stop.is-active.stop-blue .rail-dot { background: var(--blue); color: var(--blue); }
+.rail-stop.is-active { color: var(--white); transform: translateY(-1px); }
+.rail-stop.is-active .rail-dot { animation: rail-dot-pulse 1.6s ease-in-out infinite; background: var(--white); opacity: 1; transform: scale(1.2); }
+.rail-stop.is-active.stop-red { background: linear-gradient(155deg, color-mix(in srgb, var(--red) 92%, white) 0%, var(--red) 70%); border-color: var(--red); box-shadow: 0 4px 22px -4px color-mix(in srgb, var(--red) 75%, transparent), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.rail-stop.is-active.stop-gold { background: linear-gradient(155deg, color-mix(in srgb, var(--gold) 92%, white) 0%, var(--gold) 70%); border-color: var(--gold); box-shadow: 0 4px 22px -4px color-mix(in srgb, var(--gold) 75%, transparent), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.rail-stop.is-active.stop-green { background: linear-gradient(155deg, color-mix(in srgb, var(--green) 92%, white) 0%, var(--green) 70%); border-color: var(--green); box-shadow: 0 4px 22px -4px color-mix(in srgb, var(--green) 75%, transparent), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.rail-stop.is-active:hover { transform: translateY(-3px); }
 
-@media (min-width: 901px) {
-  .rail-stops { background: var(--paper); padding: 4px 8px 4px 10px; }
+@keyframes rail-dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--white) 55%, transparent); }
+  50% { box-shadow: 0 0 0 5px transparent; }
 }
 
-@media (max-width: 900px) {
-  .transit-rail { background: color-mix(in srgb, var(--paper) 88%, transparent); bottom: 14px; gap: 8px; left: 50%; padding: 7px 10px; top: auto; transform: translateX(-50%); width: min(92vw, 430px); }
-  .rail-track { height: 3px; order: 2; width: 100%; }
-  .rail-progress { height: 100% !important; max-width: 100%; width: 100%; }
-  .rail-car { left: calc(var(--rail-position, 0) * 1%) !important; top: -7px !important; }
-  .rail-stops { flex-direction: row; justify-content: space-between; width: 100%; }
-  .rail-stop { flex-direction: column; font-size: .46rem; gap: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  .rail-stop.is-active .rail-dot { animation: none; }
+}
+
+@media (max-width: 720px) {
+  :root { --rail-clearance: 150px; }
+  .transit-rail { bottom: 14px; border-radius: 16px; gap: 9px; padding: 12px 16px 10px; width: min(94vw, 460px); }
+  .rail-label { font-size: .54rem; }
+  .rail-stops { gap: 5px; }
+  .rail-stop { flex-direction: column; font-size: .48rem; gap: 4px; padding: 8px 6px; }
   .rail-dot { margin-left: 0; order: -1; }
 }
 
@@ -587,44 +1281,8 @@ main .section-heading .eyebrow { color: var(--ink); font-size: .72rem; font-weig
   .rail-progress, .rail-car { transition: none; }
 }
 
-.train-motion-overlay {
-  inset: 0;
-  opacity: 0;
-  pointer-events: none;
-  position: fixed;
-  transition: opacity .3s ease;
-  z-index: 40;
-}
-
-.train-motion-overlay::before,
-.train-motion-overlay::after {
-  -webkit-backdrop-filter: blur(2.5px);
-  backdrop-filter: blur(2.5px);
-  content: "";
-  height: 16vh;
-  left: 0;
-  position: absolute;
-  right: 0;
-}
-
-.train-motion-overlay::before {
-  -webkit-mask-image: linear-gradient(to bottom, black, transparent);
-  mask-image: linear-gradient(to bottom, black, transparent);
-  top: 0;
-}
-
-.train-motion-overlay::after {
-  -webkit-mask-image: linear-gradient(to top, black, transparent);
-  mask-image: linear-gradient(to top, black, transparent);
-  bottom: 0;
-}
-
-body.is-in-transit .train-motion-overlay {
-  opacity: 1;
-}
-
 .rail-car.is-moving {
-  box-shadow: 0 0 14px 4px color-mix(in srgb, var(--gold) 65%, transparent);
+  box-shadow: 0 0 16px 5px color-mix(in srgb, var(--gold) 65%, transparent);
 }
 
 .rail-car.is-arriving {
@@ -633,11 +1291,10 @@ body.is-in-transit .train-motion-overlay {
 
 @keyframes rail-arrive {
   0% { transform: scale(1); }
-  35% { transform: scale(1.55); }
+  35% { transform: scale(1.6); }
   100% { transform: scale(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .train-motion-overlay { display: none; }
   .rail-car.is-arriving { animation: none; }
 }

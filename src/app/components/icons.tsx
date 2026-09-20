@@ -82,6 +82,14 @@ export function WrenchIcon({ className }: IconProps) {
   );
 }
 
+export function ChevronIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <polyline points="9 6 15 12 9 18" />
+    </svg>
+  );
+}
+
 export function TrainIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>
